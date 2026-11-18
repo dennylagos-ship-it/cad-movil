@@ -45,6 +45,9 @@
   .entrada { font-size: 16px; padding: 12px; }
   .gps { margin: 14px 16px 0; font-size: 12.5px; color: var(--sec); display: flex; align-items: center; gap: 8px; }
   #alerta { position: fixed; inset: 0; z-index: 50; background: radial-gradient(circle at 50% 30%, #7a1d0c, #1a0904 70%); display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 24px; }
+  #activarSonido { position: fixed; left: 10px; right: 10px; bottom: 10px; z-index: 40; background: #b45309; color: #fff; border-radius: 14px; padding: 14px 16px; text-align: center; font-size: 15px; box-shadow: 0 6px 24px rgba(0,0,0,.5); cursor: pointer; }
+  #activarSonido small { opacity: .9; font-size: 12.5px; }
+  #activarSonido.listo { display: none; }
   #alerta.on { display: flex; animation: latido 1s infinite alternate; }
   @keyframes latido { from { filter: brightness(1); } to { filter: brightness(1.25); } }
   #alerta h1 { font-size: 30px; margin: 10px 0; }
@@ -97,6 +100,7 @@
 
 <div class="gps"><span class="punto" id="pGps" style="background:var(--fuera)"></span><span id="tGps">GPS: iniciando…</span></div>
 
+<div id="activarSonido" onclick="activarSonido()">🔔 <b>Toque aquí para activar el sonido de las alarmas</b><br><small>El celular no deja sonar la página hasta que se toque una vez. Deje esta app abierta.</small></div>
 <div id="alerta">
   <div style="font-size:54px">🚨</div>
   <h1>NUEVA EMERGENCIA</h1>
@@ -353,21 +357,50 @@ function mostrarAlerta(s) {
   document.getElementById('aTipo').textContent = s.tipo + ' · ' + s.condicion;
   document.getElementById('aDir').textContent = s.direccion + (s.municipio ? ', ' + s.municipio : '');
   document.getElementById('alerta').classList.add('on');
-  sirena(); vibrar([400, 200, 400, 200, 400]);
+  sirena();
 }
 function verAlerta() {
-  document.getElementById('alerta').classList.remove('on'); if (audio) { audio.close(); audio = null; }
+  document.getElementById('alerta').classList.remove('on'); pararSirena();
   if (mapaS && pinS) setTimeout(function () { mapaS.invalidateSize(); mapaS.setView(pinS.getLatLng(), 16); }, 80);
 }
-function sirena() {
+// El navegador solo deja sonar la página después de que la persona la toca una vez.
+// Al primer toque se "abre" el sonido y queda abierto mientras la app siga abierta.
+function activarSonido() {
   try {
-    audio = new (window.AudioContext || window.webkitAudioContext)();
-    var o = audio.createOscillator(), g = audio.createGain();
-    o.connect(g); g.connect(audio.destination); g.gain.value = 0.15; o.type = 'square';
-    for (var i = 0; i < 12; i++) { o.frequency.setValueAtTime(i % 2 ? 660 : 880, audio.currentTime + i * 0.4); }
-    o.start(); o.stop(audio.currentTime + 4.8);
+    if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+    if (audio.state === 'suspended') audio.resume();
+    var b = audio.createBuffer(1, 1, 22050), f = audio.createBufferSource(); f.buffer = b; f.connect(audio.destination); f.start(0);
   } catch (e) {}
+  setTimeout(revisarSonido, 300);
+  pedirPantallaEncendida();
 }
+function revisarSonido() { document.getElementById('activarSonido').classList.toggle('listo', !!(audio && audio.state === 'running')); }
+['pointerdown', 'touchend', 'keydown'].forEach(function (ev) { document.addEventListener(ev, activarSonido, true); });
+var sirenaHasta = 0, sirenaT = null, osc = null;
+function sirena() {
+  sirenaHasta = Date.now() + 60000; // suena hasta que la toquen, máximo 1 minuto
+  (function tono() {
+    if (Date.now() > sirenaHasta) return pararSirena();
+    try {
+      if (!audio) audio = new (window.AudioContext || window.webkitAudioContext)();
+      if (audio.state === 'suspended') audio.resume();
+      var o = audio.createOscillator(), g = audio.createGain();
+      o.connect(g); g.connect(audio.destination); g.gain.value = 0.25; o.type = 'square';
+      for (var i = 0; i < 12; i++) { o.frequency.setValueAtTime(i % 2 ? 660 : 880, audio.currentTime + i * 0.4); }
+      o.start(); o.stop(audio.currentTime + 4.8); osc = o;
+    } catch (e) {}
+    vibrar([400, 200, 400, 200, 400]);
+    sirenaT = setTimeout(tono, 6000);
+  })();
+}
+function pararSirena() { sirenaHasta = 0; clearTimeout(sirenaT); try { osc && osc.stop(); } catch (e) {} osc = null; }
+// Mantener la pantalla encendida mientras la app está abierta (así no se pierde la alarma)
+var candado = null;
+function pedirPantallaEncendida() {
+  if (candado || !navigator.wakeLock || document.hidden) return;
+  navigator.wakeLock.request('screen').then(function (c) { candado = c; c.addEventListener('release', function () { candado = null; }); }).catch(function () {});
+}
+document.addEventListener('visibilitychange', function () { if (!document.hidden) { pedirPantallaEncendida(); revisarSonido(); } });
 function vibrar(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
 
 // ---------- GPS: máximo cada 10 s; si está quieta (< 15 m), una vez por minuto ----------
