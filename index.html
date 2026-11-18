@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0f1a">
+<meta name="robots" content="noindex">
+<title>Unidad · CAD Protección Civil Táchira</title>
+<link rel="icon" href="favicon.ico">
+<link rel="stylesheet" href="app.css?v=3">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+  body { max-width: 560px; margin: 0 auto; min-height: 100vh; padding-bottom: 24px; }
+  header { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: rgba(10,15,26,.95); backdrop-filter: blur(6px); border-bottom: 1px solid var(--linea); }
+  header img { height: 30px; }
+  header b { font-size: 16px; }
+  header small { display: block; color: var(--mut); font-size: 11.5px; }
+  .esp { flex: 1; }
+  .estado-chip { padding: 5px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; color: #0a0f1a; background: var(--c); }
+  .bloque { margin: 14px 16px 0; background: var(--panel); border: 1px solid var(--linea); border-radius: 16px; padding: 16px; }
+  .espera { text-align: center; padding: 34px 18px; }
+  .espera .icono { font-size: 44px; }
+  .espera h2 { margin: 10px 0 4px; }
+  .datos { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 13px; margin-top: 16px; text-align: left; }
+  .datos span { color: var(--mut); }
+  .cab-srv { display: flex; justify-content: space-between; align-items: center; }
+  .prioridad { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; background: #4a1414; color: #fca5a5; }
+  .tipo { font-size: 20px; font-weight: 700; margin: 10px 0 4px; }
+  .dir { font-size: 15px; color: var(--sec); }
+  .motivo { margin-top: 10px; font-size: 14px; padding: 10px 12px; background: var(--panel2); border-radius: 10px; }
+  .acciones { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .acciones a { text-decoration: none; text-align: center; }
+  .pasos { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; margin-top: 4px; }
+  .pasos div { text-align: center; font-size: 10.5px; color: var(--mut); }
+  .pasos div i { display: block; height: 6px; border-radius: 3px; background: #24304a; margin-bottom: 5px; }
+  .pasos div.ok i { background: var(--c); } .pasos div.ok { color: var(--txt); }
+  .pasos div b { display: block; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .gran { width: 100%; padding: 20px; font-size: 19px; font-weight: 800; border-radius: 14px; border: 0; color: #0a0f1a; background: var(--c); cursor: pointer; margin-top: 14px; letter-spacing: .3px; }
+  .gran:active { transform: scale(.98); }
+  .gran small { display: block; font-size: 12px; font-weight: 600; opacity: .8; margin-top: 2px; }
+  .opciones { display: grid; gap: 8px; }
+  .opcion { padding: 16px; border-radius: 12px; border: 2px solid var(--linea2); background: var(--panel2); font-size: 16px; font-weight: 700; text-align: left; cursor: pointer; }
+  .opcion.on { border-color: var(--marca); background: rgba(242,107,29,.12); }
+  .campo-m { margin-top: 12px; }
+  .entrada { font-size: 16px; padding: 12px; }
+  .gps { margin: 14px 16px 0; font-size: 12.5px; color: var(--sec); display: flex; align-items: center; gap: 8px; }
+  #alerta { position: fixed; inset: 0; z-index: 50; background: radial-gradient(circle at 50% 30%, #7a1d0c, #1a0904 70%); display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 24px; }
+  #alerta.on { display: flex; animation: latido 1s infinite alternate; }
+  @keyframes latido { from { filter: brightness(1); } to { filter: brightness(1.25); } }
+  #alerta h1 { font-size: 30px; margin: 10px 0; }
+  #alerta p { font-size: 17px; margin: 4px 0; color: #ffe2d1; }
+  #alerta button { margin-top: 26px; width: 100%; max-width: 360px; padding: 20px; font-size: 20px; font-weight: 800; border: 0; border-radius: 14px; background: #fff; color: #7a1d0c; }
+  .oculto { display: none !important; }
+  #mapaSrv { height: 260px; background: #0b1220; position: relative; z-index: 0; isolation: isolate; }
+  .nav { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; padding: 12px 14px 8px; }
+  .nav a { text-decoration: none; padding: 14px; font-size: 15px; }
+  .pin-em { width: 24px; height: 24px; border-radius: 50% 50% 50% 0; background: var(--peligro); border: 3px solid #fff; transform: rotate(-45deg); box-shadow: 0 3px 10px rgba(0,0,0,.5); }
+  .yo { width: 16px; height: 16px; border-radius: 50%; background: #3b82f6; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(59,130,246,.25); }
+</style>
+</head>
+<body>
+<header>
+  <img src="img/logo_pc.png" alt="">
+  <div><b id="hUni">—</b><small id="hNom"></small></div>
+  <div class="esp"></div>
+  <span class="estado-chip" id="hEst">…</span>
+  <span class="punto" id="pCon" style="background:var(--fuera)"></span>
+</header>
+
+<div id="vEspera" class="bloque espera">
+  <div class="icono">🛡️</div>
+  <h2>En base · disponible</h2>
+  <div class="sec">Esta pantalla avisará con sonido y vibración cuando el CCO le asigne una emergencia.</div>
+  <div class="datos" id="datosUni"></div>
+</div>
+
+<div id="vServicio" class="oculto">
+  <div class="bloque" id="tarjetaSrv"></div>
+  <div class="bloque" id="bloqueMapa" style="padding:0;overflow:hidden">
+    <div id="mapaSrv"></div>
+    <div class="nav">
+      <a class="btn btn-marca" id="btnGoogle" target="_blank" rel="noopener">🧭 Ir con Google Maps</a>
+      <a class="btn btn-linea" id="btnWaze" target="_blank" rel="noopener">Waze</a>
+    </div>
+    <div class="mut" id="mapaNota" style="font-size:12px;padding:0 14px 12px"></div>
+  </div>
+  <div class="bloque" id="bloquePaso"></div>
+  <div class="bloque" id="bloqueFotos">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b>📷 Fotos del servicio</b><div class="mut" style="font-size:12px" id="fotoTxt">Quedan en el folio y salen en la ficha de novedades</div></div>
+      <label class="btn btn-linea" style="cursor:pointer">Tomar foto<input type="file" accept="image/*" capture="environment" id="fotoIn" style="display:none"></label></div>
+  </div>
+</div>
+
+<div style="margin:14px 16px 0"><button class="btn btn-peligro" style="width:100%;padding:14px;font-size:15px" onclick="abrirNovedad()">⚠ Reportar novedad al CCO</button></div>
+
+<div class="velo" id="mNov"><div class="modal" style="width:min(480px,100%)"><div class="modal-cab"><h3>Reportar novedad</h3><button class="cerrar-x" onclick="cerrarNovedad()">×</button></div><div class="modal-cuerpo"><div class="opciones" id="novTipos"></div><div class="campo-m"><label class="campo">Detalle (opcional)</label><textarea class="entrada" id="novTxt" placeholder="Qué pasó, dónde, si hay heridos…"></textarea></div><button class="gran" style="--c:var(--peligro);color:#fff" onclick="enviarNovedad()">ENVIAR AL CCO</button></div></div></div>
+
+<div class="gps"><span class="punto" id="pGps" style="background:var(--fuera)"></span><span id="tGps">GPS: iniciando…</span></div>
+
+<div id="alerta">
+  <div style="font-size:54px">🚨</div>
+  <h1>NUEVA EMERGENCIA</h1>
+  <p id="aTipo"></p><p id="aDir"></p>
+  <button onclick="verAlerta()">VER Y ATENDER</button>
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>window.CAD_MODO_CALLE = true;</script>
+<script src="comun.js?v=3"></script>
+<script src="calle.js?v=1"></script>
+<script>
+var esc = CAD.esc, E = null, servicioVisto = null, decision = 'hospital', audio = null;
+var codigo = new URLSearchParams(location.search).get('u');
+
+// ---------- Paso automático a conexión segura (https) para el GPS ----------
+// El QR abre por http. La llave viene en el "#" y se guarda solo en este celular; si el celular ya tiene
+// el certificado del CCO, se pasa solo a https (puerto + 43) sin volver a escanear.
+var LLAVE_KEY = 'cad_llave_' + codigo;
+(function () {
+  var m = location.hash.match(/k=([^&]+)/);
+  if (m && codigo) { try { localStorage.setItem(LLAVE_KEY, decodeURIComponent(m[1])); } catch (e) {} history.replaceState(null, '', location.pathname + location.search); }
+})();
+function urlSegura() {
+  var puerto = Number(location.port || 80) + 43, k = null;
+  try { k = localStorage.getItem(LLAVE_KEY); } catch (e) {}
+  return 'https://' + location.hostname + ':' + puerto + '/movil.html?u=' + encodeURIComponent(codigo) + (k ? '&k=' + encodeURIComponent(k) : '');
+}
+function probarSegura() {
+  if (window.isSecureContext || location.protocol !== 'http:' || !codigo) return;
+  var ctl = window.AbortController ? new AbortController() : null;
+  var t = setTimeout(function () { ctl && ctl.abort(); }, 4000);
+  fetch('https://' + location.hostname + ':' + (Number(location.port || 80) + 43) + '/certificado-listo', { mode: 'no-cors', cache: 'no-store', signal: ctl ? ctl.signal : undefined })
+    .then(function () { clearTimeout(t); location.replace(urlSegura()); })
+    .catch(function () { clearTimeout(t); });
+}
+probarSegura();
+document.addEventListener('visibilitychange', function () { if (!document.hidden) probarSegura(); });
+
+function cargar() {
+  return CAD.api('/api/estado').then(function (d) {
+    if (!d.unidad) { document.body.innerHTML = '<div class="bloque espera"><h2>Celular no vinculado</h2><p class="sec">Escanee el QR de su unidad en la consola del CCO.</p></div>'; return; }
+    E = d; pintar();
+  }).catch(function (e) { CAD.aviso(e.message, true); });
+}
+
+function pintar() {
+  var u = E.unidad, s = E.servicio;
+  document.getElementById('hUni').textContent = u.codigo;
+  document.getElementById('hNom').textContent = u.nombre;
+  var chip = document.getElementById('hEst');
+  chip.className = 'estado-chip e-' + u.estado; chip.textContent = CAD.ESTADOS[u.estado];
+  document.body.className = 'e-' + u.estado;
+  document.getElementById('vEspera').classList.toggle('oculto', !!s);
+  document.getElementById('vServicio').classList.toggle('oculto', !s);
+  var trip = u.tripulacion || [];
+  document.getElementById('datosUni').innerHTML = '<span>Base</span><b>' + esc(u.base) + '</b>' + (u.guardia ? '<span>Guardia</span><b>' + esc(u.guardia) + '</b>' : '') +
+    (trip.length ? trip.map(function (t) { return '<span>' + esc(t.rol) + '</span><b>' + esc((t.rango ? t.rango + ' ' : '') + t.nombre) + '</b>'; }).join('') : '<span>Tripulación</span><b style="color:var(--despachada)">Sin asignar · avise al CCO</b>');
+  if (!s) { servicioVisto = null; mapaDe = null; return; }
+  if (servicioVisto !== s.id && !s.fases.ruta) mostrarAlerta(s);
+  servicioVisto = s.id;
+
+  var pasos = CAD.fasesDe(s).map(function (f) { var r = s.fases[f.id]; return '<div class="' + (r ? 'ok' : '') + '"><i></i>' + f.nombre + '<b>' + (r ? esc(r.h) : '') + '</b></div>'; }).join('');
+  var mapsUrl = s.lat ? 'https://www.google.com/maps/dir/?api=1&destination=' + s.lat + ',' + s.lng : 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(s.direccion + ', ' + s.municipio + ', Táchira');
+  document.getElementById('tarjetaSrv').innerHTML =
+    '<div class="cab-srv"><span class="prioridad">' + esc(s.condicion) + '</span><span class="sec num">Folio #' + esc(s.folio) + '</span></div>' +
+    '<div class="tipo">' + esc(s.tipo) + '</div><div class="dir">📍 ' + esc(s.direccion) + (s.municipio ? ', ' + esc(s.municipio) : '') + (s.parroquia ? ' (' + esc(s.parroquia) + ')' : '') + '</div>' +
+    (s.motivo ? '<div class="motivo">' + esc(s.motivo) + '</div>' : '') +
+    (s.telefono ? '<div class="acciones" style="grid-template-columns:1fr"><a class="btn btn-linea" href="tel:' + esc(s.telefono.replace(/[^\d+]/g, '')) + '">☎ Llamar al alertante · ' + esc(s.telefono) + '</a></div>' : '') +
+    ((s.tripulacion || []).length ? '<div class="sec" style="font-size:13px;margin-top:10px">👥 ' + s.tripulacion.map(function (t) { return esc(t.nombre) + ' (' + esc(t.rol) + ')'; }).join(' · ') + '</div>' : '') +
+    (s.decision ? '<div class="motivo">→ ' + esc(s.decision.destino) + (s.decision.medico ? ' · ' + esc(s.decision.medico) : '') + '</div>' : '') +
+    '<div style="margin-top:14px;grid-template-columns:repeat(' + CAD.fasesDe(s).length + ',1fr)" class="pasos">' + pasos + '</div>';
+  pintarPaso(s);
+  pintarMapa(s);
+  document.getElementById('fotoTxt').textContent = s.fotosEnviadas ? s.fotosEnviadas + ' foto(s) en el folio' : 'También puede mandarlas por WhatsApp con el folio o la unidad en el texto';
+}
+// Achica la foto en el celular (máx. 1600 px, JPG) para que suba rápido aunque la señal sea mala
+function comprimirFoto(archivo) {
+  return new Promise(function (ok, mal) {
+    var img = new Image(), url = URL.createObjectURL(archivo);
+    img.onload = function () {
+      var k = Math.min(1, 1600 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(function (b) { b ? ok(b) : mal(new Error('No se pudo leer la foto')); }, 'image/jpeg', 0.78);
+    };
+    img.onerror = function () { mal(new Error('No se pudo abrir la foto')); };
+    img.src = url;
+  });
+}
+function subirFoto(idServicio, archivo) {
+  return comprimirFoto(archivo).then(function (b) {
+    return fetch('/api/servicios/' + idServicio + '/foto', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: b });
+  }).then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'Error ' + r.status); return d; }); });
+}
+document.getElementById('fotoIn').onchange = function () {
+  var a = this.files[0], inp = this; if (!a || !E.servicio) return;
+  document.getElementById('fotoTxt').textContent = 'Subiendo foto…';
+  subirFoto(E.servicio.id, a).then(function () { vibrar(80); CAD.aviso('Foto agregada al folio'); return cargar(); })
+    .catch(function (e) { CAD.aviso(e.message, true); document.getElementById('fotoTxt').textContent = 'No se pudo enviar. Intente de nuevo.'; })
+    .then(function () { inp.value = ''; });
+};
+
+// ---------- mapa del servicio y navegación con Google Maps / Waze ----------
+var mapaS = null, pinS = null, pinYo = null, mapaDe = null;
+function pintarMapa(s) {
+  var enTraslado = s.decision && s.decision.tipo !== 'sitio' && !s.fases.destino;
+  var g = document.getElementById('btnGoogle'), w = document.getElementById('btnWaze'), nota = document.getElementById('mapaNota');
+  if (enTraslado) {
+    // Rumbo al hospital o residencia: se navega por el nombre del destino
+    var q = encodeURIComponent(s.decision.destino + (s.decision.tipo === 'hospital' ? ', Táchira, Venezuela' : ', ' + (s.municipio || '') + ', Táchira'));
+    g.href = 'https://www.google.com/maps/dir/?api=1&destination=' + q + '&travelmode=driving';
+    w.href = 'https://waze.com/ul?q=' + q + '&navigate=yes';
+    g.textContent = '🧭 Ir al destino con Google Maps';
+    nota.textContent = 'Destino: ' + s.decision.destino;
+  } else if (s.lat != null) {
+    g.href = 'https://www.google.com/maps/dir/?api=1&destination=' + s.lat + ',' + s.lng + '&travelmode=driving';
+    w.href = 'https://waze.com/ul?ll=' + s.lat + ',' + s.lng + '&navigate=yes';
+    g.textContent = '🧭 Ir con Google Maps';
+    nota.textContent = s.precision === 'municipio' || s.precision === 'parroquia' ? 'Ubicación aproximada (' + s.precision + '). Confirme la dirección con el alertante.' : 'Toque el botón para abrir la ruta en el GPS del teléfono.';
+  } else {
+    var q2 = encodeURIComponent(s.direccion + ', ' + (s.municipio || '') + ', Táchira, Venezuela');
+    g.href = 'https://www.google.com/maps/search/?api=1&query=' + q2;
+    w.href = 'https://waze.com/ul?q=' + q2 + '&navigate=yes';
+    g.textContent = '🧭 Buscar en Google Maps';
+    nota.textContent = 'El CCO no pudo marcar el punto exacto; se buscará por la dirección escrita.';
+  }
+  var caja = document.getElementById('mapaSrv');
+  caja.style.display = s.lat != null ? '' : 'none';
+  if (s.lat == null) return;
+  if (!mapaS) {
+    mapaS = L.map('mapaSrv', { zoomControl: false });
+    CAD.fondoMapa(mapaS, 'movil', 'Calles');
+  }
+  if (!pinS) pinS = L.marker([s.lat, s.lng], { icon: L.divIcon({ className: '', iconSize: [24, 24], iconAnchor: [12, 24], html: '<div class="pin-em"></div>' }) }).addTo(mapaS);
+  pinS.setLatLng([s.lat, s.lng]);
+  if (ultimoGps) {
+    if (!pinYo) pinYo = L.marker([ultimoGps.lat, ultimoGps.lng], { icon: L.divIcon({ className: '', iconSize: [16, 16], html: '<div class="yo"></div>' }) }).addTo(mapaS);
+    pinYo.setLatLng([ultimoGps.lat, ultimoGps.lng]);
+  }
+  if (mapaDe !== s.id) {
+    mapaDe = s.id;
+    setTimeout(function () {
+      mapaS.invalidateSize();
+      if (pinYo) mapaS.fitBounds(L.latLngBounds([pinS.getLatLng(), pinYo.getLatLng()]), { padding: [40, 40], maxZoom: 16 });
+      else mapaS.setView([s.lat, s.lng], 16);
+    }, 60);
+  }
+}
+
+var pasoPintado = '';
+function pintarPaso(s) {
+  var sig = CAD.siguienteFase(s), b = document.getElementById('bloquePaso');
+  // No redibujar un formulario a medio llenar cuando llega cualquier actualización
+  var clave = s.id + ':' + (sig ? sig.id : '');
+  if (clave === pasoPintado && sig && (sig.id === 'cierre' || sig.id === 'decision') && b.innerHTML) return;
+  pasoPintado = clave;
+  if (!sig) { b.innerHTML = ''; return; }
+  if (sig.id === 'ruta') b.innerHTML = '<button class="gran" onclick="marcar(\'ruta\')">SALIR EN RUTA<small>Toque al salir de la base</small></button>';
+  if (sig.id === 'sitio') b.innerHTML = '<button class="gran" onclick="marcar(\'sitio\')">LLEGAMOS AL SITIO<small>Toque al llegar a la emergencia</small></button>';
+  if (sig.id === 'decision') {
+    b.innerHTML = '<div style="font-weight:700;margin-bottom:10px">¿Qué se hace con el paciente?</div><div class="opciones">' +
+      '<div class="opcion" data-v="hospital">🏥 Traslado a hospital</div><div class="opcion" data-v="residencia">🏠 Traslado a residencia</div><div class="opcion" data-v="sitio">✚ Atendido en el sitio</div><div class="opcion" data-v="estudio">🔁 Estudio con regreso</div></div>' +
+      '<div class="campo-m" id="cajaDest"><label class="campo">Destino</label><input class="entrada" id="mDest" list="hosp"><datalist id="hosp">' + E.hospitales.map(function (h) { return '<option value="' + esc(h) + '">'; }).join('') + '</datalist></div>' +
+      '<div class="campo-m" id="cajaReg" style="display:none"><label class="campo">Regresa a (hospital de origen)</label><input class="entrada" id="mReg" list="hosp" value="' + esc(s.direccion || '') + '"></div>' +
+      '<div class="campo-m"><label class="campo">Médico que autoriza / recibe</label><input class="entrada" id="mMed" placeholder="Nombre del médico"></div>' +
+      '<button class="gran" onclick="enviarDecision()">CONFIRMAR DECISIÓN</button>';
+    b.querySelectorAll('.opcion').forEach(function (o) { o.onclick = function () { elegir(o.dataset.v); }; });
+    elegir(decision);
+  }
+  if (sig.id === 'destino') b.innerHTML = '<button class="gran" onclick="marcar(\'destino\')">' + (s.decision && s.decision.tipo === 'estudio' ? 'LLEGAMOS AL ESTUDIO' : 'LLEGAMOS AL DESTINO') + '<small>' + esc(s.decision ? s.decision.destino : '') + '</small></button>';
+  if (sig.id === 'regreso') b.innerHTML = '<div class="sec" style="margin-bottom:6px">🔁 Paciente en estudio. Cuando termine:</div><button class="gran" onclick="marcar(\'regreso\')">SALIMOS DE REGRESO<small>Hacia ' + esc(s.decision.regreso || s.direccion) + '</small></button>';
+  if (sig.id === 'retorno') b.innerHTML = '<button class="gran" onclick="marcar(\'retorno\')">LLEGAMOS DE REGRESO<small>' + esc(s.decision.regreso || s.direccion) + '</small></button>';
+  if (sig.id === 'cierre') {
+    nPac = 0;
+    b.innerHTML = '<div style="font-weight:700">Cerrar folio y quedar disponible</div>' +
+      '<div class="campo-m"><label class="campo">¿Al llegar, ya se habían llevado al paciente?</label><select class="entrada" id="cLlevado" onchange="verLlevado()"><option value="">No: PC atendió al paciente (anotar datos)</option><option value="bomberos">Sí: lo llevaron los Bomberos</option><option value="pol_estadal">Sí: lo llevó la Policía Estadal</option><option value="pol_municipal">Sí: lo llevó la Policía Municipal</option><option value="pnb">Sí: lo llevó la PNB</option><option value="gnb">Sí: lo llevó la GNB</option><option value="otro_org">Sí: otro organismo u otra ambulancia</option><option value="particular">Sí: un vehículo particular (familiares, vecinos)</option></select></div>' +
+      '<div class="campo-m" id="cOtroCaja" style="display:none"><label class="campo">Detalle (opcional)</label><input class="entrada" id="cOtroDet" placeholder="Ej: patrulla P-23"></div>' +
+      '<div id="pacs"></div>' +
+      '<button id="btnMasPac" class="gran" style="--c:var(--panel2);color:var(--txt,#e8eef6);border:2px dashed var(--linea2);margin-top:6px" onclick="agregarPaciente()">➕ AGREGAR OTRO PACIENTE<small>Cada paciente lleva su propio folio</small></button>' +
+      '<button class="gran" style="--c:var(--disponible)" onclick="cerrarFolio()">CERRAR FOLIO<small>La unidad queda disponible</small></button>';
+    agregarPaciente();
+  }
+}
+function elegir(v) {
+  decision = v;
+  document.querySelectorAll('.opcion').forEach(function (o) { o.classList.toggle('on', o.dataset.v === v); });
+  var c = document.getElementById('cajaDest'); if (c) c.style.display = v === 'sitio' ? 'none' : '';
+  var r = document.getElementById('cajaReg'); if (r) r.style.display = v === 'estudio' ? '' : 'none';
+}
+function marcar(fase) {
+  CAD.api('/api/servicios/' + E.servicio.id + '/fase', { fase: fase }).then(function () { vibrar(60); return cargar(); }).catch(function (e) { CAD.aviso(e.message, true); });
+}
+function enviarDecision() {
+  var dest = (document.getElementById('mDest') || {}).value || '';
+  if (decision !== 'sitio' && !dest.trim()) return CAD.aviso('Indique el destino', true);
+  CAD.api('/api/servicios/' + E.servicio.id + '/fase', { fase: 'decision', tipo: decision, destino: dest, medico: document.getElementById('mMed').value, regreso: (document.getElementById('mReg') || {}).value || '' }).then(cargar).catch(function (e) { CAD.aviso(e.message, true); });
+}
+var nPac = 0;
+function agregarPaciente() {
+  var s = E.servicio, i = nPac++, d = document.createElement('div');
+  d.className = 'pac'; d.dataset.i = i;
+  d.style.cssText = i ? 'border-top:1px dashed #fff3;margin-top:12px;padding-top:6px' : '';
+  d.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px"><b>Paciente ' + (i + 1) + '</b><span class="sec" style="font-size:12px">' + (i ? 'folio nuevo al guardar' : 'folio #' + esc(s.folio)) + '</span>' + (i ? '<button style="background:none;border:0;color:#f88;font-size:20px" onclick="this.closest(\'.pac\').remove()">×</button>' : '') + '</div>' +
+    '<div class="campo-m"><label class="campo">Nombre y apellido del paciente</label><input class="entrada" data-k="nombre"></div>' +
+    '<div class="rejilla campo-m"><div><label class="campo">Edad</label><input class="entrada" data-k="edad" inputmode="numeric" placeholder="Ej: 45"></div><div><label class="campo">Cédula</label><input class="entrada" data-k="cedula" placeholder="V-… o S/C"></div></div>' +
+    '<div class="campo-m"><label class="campo">Diagnóstico / impresión</label><input class="entrada" data-k="dx"></div>' +
+    '<div class="campo-m"><label class="campo">Destino</label><input class="entrada" data-k="destino" list="hospC" value="' + esc(s.decision ? (s.decision.tipo === 'estudio' ? s.decision.regreso || '' : s.decision.destino) : '') + '"></div>' +
+    '<div class="campo-m"><label class="campo">Médico receptor</label><input class="entrada" data-k="medico" value="' + (i ? '' : esc(s.decision ? s.decision.medico : '')) + '"></div>';
+  document.getElementById('pacs').appendChild(d);
+  if (!document.getElementById('hospC')) { var dl = document.createElement('datalist'); dl.id = 'hospC'; dl.innerHTML = E.hospitales.map(function (h) { return '<option value="' + esc(h) + '">'; }).join(''); document.body.appendChild(dl); }
+  if (i) d.querySelector('[data-k=nombre]').focus();
+}
+function leerPacientes() {
+  return Array.prototype.map.call(document.querySelectorAll('#pacs .pac'), function (d) {
+    var x = {}; d.querySelectorAll('[data-k]').forEach(function (inp) { x[inp.dataset.k] = inp.value; });
+    if (x.edad && !/\D/.test(x.edad)) x.edad += ' años';
+    return x;
+  });
+}
+function verLlevado() {
+  var otro = !!document.getElementById('cLlevado').value;
+  document.getElementById('pacs').style.display = otro ? 'none' : '';
+  document.getElementById('btnMasPac').style.display = otro ? 'none' : '';
+  document.getElementById('cOtroCaja').style.display = otro ? '' : 'none';
+}
+function cerrarFolio() {
+  var ll = document.getElementById('cLlevado').value;
+  if (ll) return CAD.api('/api/servicios/' + E.servicio.id + '/cerrar', { llevadoPor: ll, detalleOtro: document.getElementById('cOtroDet').value })
+    .then(function () { vibrar(200); CAD.aviso('Folio cerrado sin paciente (ya lo habían llevado). Unidad disponible.'); return cargar(); }).catch(function (e) { CAD.aviso(e.message, true); });
+  var l = leerPacientes();
+  if (!l[0].nombre.trim() && !confirm('¿Cerrar sin nombre del paciente?')) return;
+  CAD.api('/api/servicios/' + E.servicio.id + '/cerrar', { pacientes: l })
+    .then(function (s) { vibrar(200); CAD.aviso(s.pacientes && s.pacientes.length > 1 ? 'Cerrado con ' + s.pacientes.length + ' folios: ' + s.pacientes.map(function (x) { return x.folio; }).join(', ') : 'Folio cerrado. Unidad disponible.'); return cargar(); }).catch(function (e) { CAD.aviso(e.message, true); });
+}
+
+// ---------- novedad o percance de la unidad ----------
+var NOV_TIPOS = ['Choque o accidente de la unidad', 'Falla mecánica', 'Solicita apoyo', 'Agresión o inseguridad', 'Lesión de un tripulante', 'Otra novedad'], novTipo = null;
+function abrirNovedad() {
+  novTipo = null;
+  document.getElementById('novTxt').value = '';
+  document.getElementById('novTipos').innerHTML = NOV_TIPOS.map(function (x, i) { return '<div class="opcion" data-i="' + i + '">' + x + '</div>'; }).join('');
+  document.querySelectorAll('#novTipos .opcion').forEach(function (o) { o.onclick = function () { novTipo = NOV_TIPOS[o.dataset.i]; document.querySelectorAll('#novTipos .opcion').forEach(function (p) { p.classList.toggle('on', p === o); }); }; });
+  document.getElementById('mNov').classList.add('abierto');
+}
+function cerrarNovedad() { document.getElementById('mNov').classList.remove('abierto'); }
+function enviarNovedad() {
+  if (!novTipo) return CAD.aviso('Elija qué tipo de novedad es', true);
+  CAD.api('/api/novedad', { tipo: novTipo, texto: document.getElementById('novTxt').value }).then(function () { cerrarNovedad(); vibrar(150); CAD.aviso('Novedad enviada. Esperando que el CCO confirme…'); }).catch(function (e) { CAD.aviso(e.message, true); });
+}
+
+// ---------- alerta de nueva emergencia ----------
+function mostrarAlerta(s) {
+  document.getElementById('aTipo').textContent = s.tipo + ' · ' + s.condicion;
+  document.getElementById('aDir').textContent = s.direccion + (s.municipio ? ', ' + s.municipio : '');
+  document.getElementById('alerta').classList.add('on');
+  sirena(); vibrar([400, 200, 400, 200, 400]);
+}
+function verAlerta() {
+  document.getElementById('alerta').classList.remove('on'); if (audio) { audio.close(); audio = null; }
+  if (mapaS && pinS) setTimeout(function () { mapaS.invalidateSize(); mapaS.setView(pinS.getLatLng(), 16); }, 80);
+}
+function sirena() {
+  try {
+    audio = new (window.AudioContext || window.webkitAudioContext)();
+    var o = audio.createOscillator(), g = audio.createGain();
+    o.connect(g); g.connect(audio.destination); g.gain.value = 0.15; o.type = 'square';
+    for (var i = 0; i < 12; i++) { o.frequency.setValueAtTime(i % 2 ? 660 : 880, audio.currentTime + i * 0.4); }
+    o.start(); o.stop(audio.currentTime + 4.8);
+  } catch (e) {}
+}
+function vibrar(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+
+// ---------- GPS: máximo cada 10 s; si está quieta (< 15 m), una vez por minuto ----------
+var ultimoGps = null;
+function iniciarGps() {
+  var t = document.getElementById('tGps'), p = document.getElementById('pGps');
+  if (!('geolocation' in navigator) || !window.isSecureContext) {
+    t.innerHTML = 'GPS apagado: falta instalar el certificado del CCO en este celular. <a href="certificado" style="color:var(--txt);font-weight:700">Activar GPS</a>';
+    p.style.background = 'var(--despachada)';
+    return;
+  }
+  navigator.geolocation.watchPosition(function (pos) {
+    var ahora = Date.now(), c = pos.coords;
+    if (ultimoGps) {
+      var dy = (c.latitude - ultimoGps.lat) * 111320, dx = (c.longitude - ultimoGps.lng) * 111320 * Math.cos(ultimoGps.lat * Math.PI / 180);
+      var m = Math.sqrt(dx * dx + dy * dy), dt = ahora - ultimoGps.t;
+      if (dt < 10000 || (m < 15 && dt < 60000)) return;
+    }
+    ultimoGps = { t: ahora, lat: c.latitude, lng: c.longitude };
+    CAD.api('/api/gps', { lat: c.latitude, lng: c.longitude, vel: c.speed }).then(function () {
+      p.style.background = 'var(--disponible)'; t.textContent = 'GPS activo · última posición enviada ' + CAD.horaAhora();
+    }).catch(function () { p.style.background = 'var(--peligro)'; t.textContent = 'GPS: no se pudo enviar la posición'; });
+  }, function (err) {
+    p.style.background = 'var(--peligro)'; t.textContent = 'GPS: ' + (err.code === 1 ? 'permiso denegado; actívelo en el navegador' : 'sin señal');
+  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+}
+
+if (!codigo) { document.body.innerHTML = '<div class="bloque espera"><h2>Falta la unidad</h2><p class="sec">Abra esta pantalla escaneando el QR de su unidad.</p></div>'; }
+else {
+  cargar();
+  CAD.escuchar({ cambio: cargar, despacho: cargar, enterado: function () { vibrar(120); CAD.aviso("✓ El CCO recibió su novedad"); }, revocado: function () { document.body.innerHTML = '<div class="bloque espera"><h2>Celular desconectado</h2><p class="sec">El CCO renovó el QR de esta unidad. Escanee el QR nuevo para volver a vincular este celular.</p></div>'; }, anulado: function () { CAD.aviso('El CCO anuló el servicio. Unidad disponible.', true); verAlerta(); cargar(); },
+    reasignado: function (d) {
+      if (d && d.a === codigo) cargar().then(function () { if (E.servicio) mostrarAlerta(E.servicio); CAD.aviso('El CCO le pasó el folio ' + d.folio + ' (antes ' + d.de + '). Siga desde el paso en que iba.'); });
+      else { verAlerta(); CAD.aviso('El CCO pasó el folio ' + (d ? d.folio : '') + ' a ' + (d ? d.a : 'otra unidad') + '.', true); cargar(); }
+    } }, function (ok) {
+    document.getElementById('pCon').style.background = ok ? 'var(--disponible)' : 'var(--peligro)';
+    if (ok) cargar();
+  });
+  iniciarGps();
+}
+</script>
+</body>
+</html>

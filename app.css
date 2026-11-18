@@ -1,0 +1,66 @@
+/* CAD NUEVO · estilos compartidos */
+:root {
+  --fondo: #0a0f1a; --panel: #111827; --panel2: #0d1422; --elev: #172033; --linea: #1f2a3d; --linea2: #2b3850;
+  --txt: #e8edf5; --sec: #a3afc2; --mut: #6b7890;
+  --marca: #f26b1d; --marca2: #ff8a3d; --azul: #2f6fed;
+  --disponible: #22c55e; --despachada: #eab308; --ruta: #f97316; --sitio: #38bdf8; --traslado: #a78bfa; --estudio: #f472b6; --fuera: #64748b; --peligro: #ef4444;
+  --radio-r: 10px; --sombra: 0 10px 30px rgba(0,0,0,.35);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--fondo); color: var(--txt); font: 14px/1.45 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+.mut { color: var(--mut); } .sec { color: var(--sec); }
+
+/* Botones */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid transparent; border-radius: 8px; padding: 9px 14px; font-weight: 600; cursor: pointer; background: var(--elev); color: var(--txt); transition: filter .15s, background .15s; }
+.btn:hover { filter: brightness(1.15); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-marca { background: var(--marca); color: #fff; }
+.btn-linea { background: transparent; border-color: var(--linea2); color: var(--sec); }
+.btn-linea:hover { color: var(--txt); border-color: #3b4a66; }
+.btn-peligro { background: transparent; border-color: #5b2330; color: #fca5a5; }
+.btn-sm { padding: 5px 10px; font-size: 12.5px; border-radius: 7px; }
+
+/* Campos */
+label.campo { display: block; font-size: 12px; color: var(--sec); font-weight: 600; margin-bottom: 4px; }
+.entrada { width: 100%; background: var(--panel2); border: 1px solid var(--linea2); border-radius: 8px; padding: 9px 11px; color: var(--txt); outline: none; }
+.entrada:focus { border-color: var(--marca); box-shadow: 0 0 0 3px rgba(242,107,29,.18); }
+textarea.entrada { resize: vertical; min-height: 64px; }
+
+/* Estados */
+.punto { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.e-disponible { --c: var(--disponible); } .e-despachada { --c: var(--despachada); } .e-ruta { --c: var(--ruta); }
+.e-sitio { --c: var(--sitio); } .e-traslado { --c: var(--traslado); } .e-estudio { --c: var(--estudio); } .e-fuera { --c: var(--fuera); }
+.punto[class*="e-"] { background: var(--c); }
+.etiqueta { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700; letter-spacing: .3px; text-transform: uppercase; color: var(--c, var(--sec)); }
+
+/* Origen de una marca de tiempo */
+.por { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 4px; margin-left: 4px; vertical-align: 1px; }
+.por-movil { color: #93c5fd; background: #13254a; }
+.por-cco { color: #fdba74; background: #3d1b0b; }
+
+/* Modal */
+.velo { position: fixed; inset: 0; background: rgba(3,6,12,.7); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 1000; }
+.velo.abierto { display: flex; }
+.modal { background: var(--panel); border: 1px solid var(--linea2); border-radius: 14px; width: min(720px, 100%); max-height: 92vh; overflow: auto; box-shadow: var(--sombra); }
+.modal-cab { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid var(--linea); }
+.modal-cab h3 { margin: 0; font-size: 16px; }
+.modal-cuerpo { padding: 18px 20px; }
+.modal-pie { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--linea); }
+.rejilla { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.rejilla .todo { grid-column: 1 / -1; }
+
+/* Mapas: créditos y selector de fondo en tonos oscuros */
+.leaflet-container .leaflet-control-attribution { background: rgba(10,15,26,.75) !important; color: #a3afc2 !important; font-size: 10px; }
+.leaflet-container .leaflet-control-attribution a { color: #cbd5e1; }
+.leaflet-container .leaflet-control-layers { background: var(--panel); color: var(--txt); border: 1px solid var(--linea2) !important; border-radius: 8px !important; }
+.leaflet-container .leaflet-control-layers-expanded { padding: 8px 12px; font-size: 13px; }
+.leaflet-control-layers-toggle { filter: invert(1) hue-rotate(180deg); }
+
+/* Avisos */
+#avisos { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 2000; }
+.aviso { background: var(--elev); border: 1px solid var(--linea2); border-left: 3px solid var(--marca); padding: 10px 14px; border-radius: 8px; box-shadow: var(--sombra); max-width: 360px; font-size: 13px; }
+.aviso.error { border-left-color: var(--peligro); }
+.cerrar-x { background: none; border: 0; color: var(--mut); font-size: 20px; cursor: pointer; line-height: 1; }
